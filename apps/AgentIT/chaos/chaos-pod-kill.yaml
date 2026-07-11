@@ -1,0 +1,40 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: agentit-pod-kill
+  namespace: default
+  labels:
+    app.kubernetes.io/name: agentit
+spec:
+  appinfo:
+    appns: default
+    applabel: app=agentit
+    appkind: deployment
+  engineState: active
+  chaosServiceAccount: agentit-chaos-sa
+  experiments:
+  - name: pod-kill
+    spec:
+      components:
+        env:
+        - name: TOTAL_CHAOS_DURATION
+          value: '60'
+        - name: CHAOS_INTERVAL
+          value: '10'
+        - name: KILL_COUNT
+          value: '1'
+      probe:
+      - name: check-pod-recovery
+        type: k8sProbe
+        mode: EOT
+        k8sProbe/inputs:
+          command:
+            group: ''
+            version: v1
+            resource: pods
+            namespace: default
+            fieldSelector: status.phase=Running,metadata.labels.app=agentit
+        runProperties:
+          probeTimeout: 60s
+          retry: 3
+          interval: 5s
