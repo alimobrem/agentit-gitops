@@ -90,7 +90,7 @@ spec:
   - name: repo-url
     value: https://github.com/alimobrem/AgentIT
   - name: image-ref
-    value: quay.io/org/agentit:latest
+    value: image-registry.openshift-image-registry.svc:5000/agentit/agentit:latest
   workspaces:
   - name: shared-workspace
     volumeClaimTemplate:
