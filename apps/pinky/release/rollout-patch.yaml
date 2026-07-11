@@ -36,7 +36,7 @@ spec:
       - setWeight: 100
       canaryService: pinky-canary
       stableService: pinky
-      autoPromotionEnabled: false
+      autoPromotionEnabled: true
       abortScaleDownDelaySeconds: 30
   template:
     metadata:
@@ -49,7 +49,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: pinky
-        image: REPLACE_WITH_IMAGE:pinky
+        image: image-registry.openshift-image-registry.svc:5000/agentit/pinky:latest
         ports:
         - containerPort: 8080
         livenessProbe:

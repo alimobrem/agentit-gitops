@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: pinky
 data:
   auto-rollback: 'true'
-  error-budget-threshold: 0.01%
+  error-budget-threshold: 0.5%
   rollback-window-revisions: '2'
   abort-command: kubectl argo rollouts abort pinky
   undo-command: kubectl argo rollouts undo pinky

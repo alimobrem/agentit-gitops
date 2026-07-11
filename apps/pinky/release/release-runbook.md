@@ -18,8 +18,8 @@
 | 3 | 50% | 3 minutes | Automated (success rate >= 95%) |
 | 4 | 100% | — | Full rollout |
 
-**Auto-promotion:** No — manual promotion required
-**Criticality:** critical
+**Auto-promotion:** Yes
+**Criticality:** medium
 
 ## Monitoring During Rollout
 

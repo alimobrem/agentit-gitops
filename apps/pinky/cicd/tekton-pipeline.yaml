@@ -90,7 +90,7 @@ spec:
   - name: repo-url
     value: https://github.com/alimobrem/pinky
   - name: image-ref
-    value: quay.io/org/pinky:latest
+    value: image-registry.openshift-image-registry.svc:5000/agentit/pinky:latest
   workspaces:
   - name: shared-workspace
     volumeClaimTemplate:
