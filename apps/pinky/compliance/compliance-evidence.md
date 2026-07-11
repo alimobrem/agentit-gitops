@@ -1,8 +1,8 @@
 # Compliance Evidence Report
 
 **Repository:** pinky
-**Assessed:** 2026-07-11T07:58:45.267255+00:00
-**Overall Score:** 80.6
+**Assessed:** 2026-07-11T08:44:51.996635+00:00
+**Overall Score:** 86.3
 
 ## Security Controls
 
