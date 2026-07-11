@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: agentit-managed-apps
+  namespace: openshift-gitops
+spec:
+  generators:
+  - git:
+      repoURL: https://github.com/alimobrem/agentit-gitops
+      revision: HEAD
+      directories:
+      - path: apps/*
+  template:
+    metadata:
+      name: '{{path.basename}}'
+      namespace: openshift-gitops
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/alimobrem/agentit-gitops
+        targetRevision: HEAD
+        path: '{{path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{path.basename}}'
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+        - CreateNamespace=true
