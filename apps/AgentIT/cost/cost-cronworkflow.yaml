@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: agentit-cost-report
+  labels:
+    app.kubernetes.io/name: agentit
+spec:
+  schedule: 0 4 * * 1
+  timezone: UTC
+  concurrencyPolicy: Replace
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  workflowSpec:
+    entrypoint: cost-scan
+    templates:
+    - name: cost-scan
+      container:
+        image: REPLACE_WITH_AGENTIT_IMAGE
+        command:
+        - agentit
+        args:
+        - assess
+        - --rescan
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
