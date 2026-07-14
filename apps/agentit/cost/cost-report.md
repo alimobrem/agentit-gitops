@@ -4,7 +4,7 @@
 
 - **Primary language:** python
 - **Frameworks:** fastapi
-- **Databases:** none detected
+- **Databases:** postgresql, sqlite
 - **Architecture:** monolith
 - **Service count:** 1
 

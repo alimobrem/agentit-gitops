@@ -1,14 +1,10 @@
 # Code Changes: AgentIT
 
-Generated 2 code change(s) for enterprise readiness.
+Generated 1 code change(s) for enterprise readiness.
 
 ## Changes
 
 ### 1. `Dockerfile` (create)
-**Finding:** No HEALTHCHECK defined in Containerfile
-**Fix:** UBI9 Dockerfile with non-root user and health check (No HEALTHCHECK defined in Containerfile)
-
-### 2. `Dockerfile` (create)
 **Finding:** Using :latest tag in base image in Containerfile
 **Fix:** UBI9 Dockerfile with non-root user and health check (Using :latest tag in base image in Containerfile)
 

@@ -14,7 +14,7 @@
 
 ## Risk Indicators
 
-- **[MEDIUM]** (license): No LICENSE file found
+- No specific dependency risks detected in findings
 
 ## Recommendations
 
