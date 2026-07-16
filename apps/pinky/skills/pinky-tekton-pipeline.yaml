@@ -1,0 +1,78 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pinky-pipeline
+  labels:
+    app.kubernetes.io/name: pinky
+spec:
+  params:
+    - name: repo-url
+      type: string
+    - name: revision
+      type: string
+      default: main
+    - name: image-ref
+      type: string
+  workspaces:
+    - name: shared-workspace
+    - name: docker-credentials
+  tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.revision)
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+    - name: build
+      runAfter:
+        - git-clone
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: pip-install
+            image: python:3.12-slim
+            workingDir: $(workspaces.source.path)
+            script: |
+              #!/bin/sh
+              set -e
+              pip install --upgrade pip
+              pip install -r requirements.txt
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: test
+      runAfter:
+        - build
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: pytest
+            image: python:3.12-slim
+            workingDir: $(workspaces.source.path)
+            script: |
+              #!/bin/sh
+              set -e
+              pip install --upgrade pip
+              pip install -r requirements.txt
+              pytest --tb=short
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: image-build
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      runAfter:
+        - test
+      params:
+        - name: IMAGE
+          value: $(params.image-ref)
+        - name

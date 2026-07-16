@@ -2,13 +2,11 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: pinky-cost-labels
-  namespace: pinky
+  namespace: default
   labels:
     app.kubernetes.io/name: pinky
-    agentit.io/l5-proof: "2026-07-16"
 data:
   cost-center: engineering
   team: pinky
   environment: production
   app-tier: medium
-  l5-full-path: assess-onboard-gate-approve-deliver

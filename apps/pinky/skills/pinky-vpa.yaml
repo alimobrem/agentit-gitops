@@ -1,0 +1,26 @@
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: pinky-vpa
+  labels:
+    app.kubernetes.io/name: pinky
+    app.kubernetes.io/part-of: pinky
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pinky
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        minAllowed:
+          cpu: 50m
+          memory: 64Mi
+        maxAllowed:
+          cpu: "2"
+          memory: 2Gi
+        controlledResources:
+          - cpu
+          - memory

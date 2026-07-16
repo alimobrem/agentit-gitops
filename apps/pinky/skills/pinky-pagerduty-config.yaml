@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pinky-pagerduty-config
+  labels:
+    app.kubernetes.io/name: pinky
+    app.kubernetes.io/component: incident-management
+data:
+  pagerduty.yaml: |
+    global:
+      integration_key_secret: pinky-pagerduty-key
+      integration_key_key: PAGERDUTY_INTEGRATION_KEY
+    routing:
+      - match:
+          severity: critical
+        action: trigger
+        escalation_policy: default
+        urgency: high
+        description_template: "[CRITICAL] pinky - {{ .AlertName }}: {{ .Summary }}"
+      - match:
+          severity: warning
+        action: trigger
+        escalation_policy: default
+        urgency: low
+        description_template: "[WARNING] pinky - {{ .AlertName }}: {{ .Summary }}"
+    resolve_timeout: 5m
+    dedup_key_template: "pinky/{{ .AlertName }}/{{ .Namespace }}"

@@ -2,10 +2,9 @@ apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
   name: pinky-vpa
-  namespace: pinky
+  namespace: default
   labels:
     app.kubernetes.io/name: pinky
-    agentit.io/l5-proof: "2026-07-16"
 spec:
   targetRef:
     apiVersion: apps/v1

@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pinky-rollback-policy
+  labels:
+    app.kubernetes.io/name: pinky
+    app.kubernetes.io/component: release-policy
+data:
+  rollback-policy.yaml: |
+    application: pinky
+    version: "1.0"
+
+    error_budget:
+      window: 30d
+      target_availability: 99.9
+      remaining_threshold_pct: 25
+      action_on_breach: automatic_rollback
+
+    thresholds:
+      error_rate_5m: 0.05
+      p99_latency_5m: 2.0s
+      pod_restart_count_10m: 3
+      oom_kill_count_1h: 1
+
+    automated_rollback:
+      argo_rollouts: |
+        kubectl argo rollouts undo pinky
+      argo_cd: |
+        argocd app rollback pinky
+      kubectl: |
+        kubectl rollout undo deployment/pinky
+
+    manual_rollback:
+      steps:
+        - "1. Verify the issue: kubectl argo rollouts get rollout pinky"
+        - "2. Abort current rollout: kubectl argo rollouts abort pinky"
+        - "3. Undo to previous revision: kubectl argo rollouts undo pinky"
+        - "4. Verify stable revision is serving: kubectl argo rollouts status pinky"
+        - "5. Check pod health: kubectl get pods -l app.kubernetes.io/name=pinky"
+        - "6. Validate metrics: curl -s http://prometheus:9090/api/v1/query?query=up{app='pinky'}"
+        - "7. Notify team in Slack #pinky-releases"
+        - "8. Create post-incident issue"
+
+    escalation:
+      - condition: "rollback fails or pods not healthy after 5m"
+        action: "page on-call SRE via PagerDuty"
+      - condition: "data corruption suspected"
+        action: "escalate to engineering lead immediately"
