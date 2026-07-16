@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pinky-grafana-dashboard
+  labels:
+    app.kubernetes.io/name: pinky
+    grafana_dashboard: "1"
+data:
+  pinky-dashboard.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "title": "Request Rate",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{app=\"pinky\"}[5m]))",
+              "legendFormat": "req/s"
+            }
+          ]
+        },
+        {
+          "title": "Error Rate",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{app=\"pinky\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{app=\"pinky\"}[5m]))",
+              "legendFormat": "error %"
+            }
+          ]
+        },
+        {
+          "title": "P99 Latency",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"pinky\"}[5m])) by (le))",
+              "legendFormat": "p99 (s)"
+            }
+          ]
+        },
+        {
+          "title":

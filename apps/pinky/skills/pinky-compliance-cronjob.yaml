@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pinky-compliance-sa
+  namespace: pinky
+  labels:
+    app.kubernetes.io/name: pinky
+    app.kubernetes.io/component: compliance-rescan
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pinky-compliance-reader
+  namespace: pinky
+  labels:
+    app.kubernetes.io/name: pinky
+    app.kubernetes.io/component: compliance-rescan
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - services
+      - configmaps
+      - secrets
+      - serviceaccounts
+      - endpoints
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - networkpolicies
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources:
+      - roles
+      - rolebindings
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pinky-compliance-reader
+  namespace: pinky
+  labels:
+    app.kubernetes.io/name: pinky
+    app.kubernetes.io/component: compliance-rescan
+subjects:
+  - kind: ServiceAccount
+    name: pinky-compliance-sa
+    namespace: pinky
+roleRef:
+  kind: Role
+  name: pinky-compliance-
