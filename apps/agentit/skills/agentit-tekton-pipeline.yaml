@@ -1,0 +1,240 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: agentit-pipeline
+  labels:
+    app.kubernetes.io/name: agentit
+    app.kubernetes.io/part-of: agentit
+    app.kubernetes.io/managed-by: tekton
+spec:
+  params:
+    - name: repo-url
+      type: string
+      description: Source repository URL
+    - name: revision
+      type: string
+      description: Git revision to checkout
+      default: main
+    - name: image-ref
+      type: string
+      description: Target container image reference including tag
+  workspaces:
+    - name: shared-workspace
+      description: Shared workspace for source code and build artifacts
+    - name: docker-credentials
+      description: Docker config secret for image push authentication
+  tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.revision)
+        - name: deleteExisting
+          value: "true"
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+    - name: build
+      taskRef:
+        name: agentit-python-build
+        kind: Task
+      runAfter:
+        - git-clone
+      params:
+        - name: SOURCE_DIR
+          value: $(workspaces.source.path)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: test
+      taskRef:
+        name: agentit-python-test
+        kind: Task
+      runAfter:
+        - build
+      params:
+        - name: SOURCE_DIR
+          value: $(workspaces.source.path)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: image-build
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      runAfter:
+        - test
+      params:
+        - name: IMAGE
+          value: $(params.image-ref)
+        - name: DOCKERFILE
+          value: ./Containerfile
+        - name: CONTEXT
+          value: .
+        - name: TLSVERIFY
+          value: "true"
+        - name: FORMAT
+          value: oci
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: image-push
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      runAfter:
+        - image-build
+      params:
+        - name: IMAGE
+          value: $(params.image-ref)
+        - name: TLSVERIFY
+          value: "true"
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: dockerconfig
+          workspace: docker-credentials
+    - name: image-scan
+      taskRef:
+        name: image-scan
+        kind: Task
+      runAfter:
+        - image-push
+      params:
+        - name: IMAGE
+          value: $(params.image-ref)
+    - name: sbom-generate
+      taskRef:
+        name: agentit-sbom
+        kind: Task
+      runAfter:
+        - image-push
+      params:
+        - name: IMAGE
+          value: $(params.image-ref)
+    - name: deploy
+      taskRef:
+        name: kubernetes-actions
+        kind: ClusterTask
+      runAfter:
+        - image-scan
+        - sbom-generate
+      params:
+        - name: script
+          value: kubectl rollout restart deployment/agentit
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: agentit-python-build
+  labels:
+    app.kubernetes.io/name: agentit
+    app.kubernetes.io/part-of: agentit
+    app.kubernetes.io/managed-by: tekton
+spec:
+  params:
+    - name: SOURCE_DIR
+      type: string
+      default: /workspace/source
+      description: Path to the source directory
+    - name: PYTHON_IMAGE
+      type: string
+      default: python:3.12-slim
+      description: Python base image to use for build
+  workspaces:
+    - name: source
+      description: Workspace containing the cloned source code
+  steps:
+    - name: install-dependencies
+      image: $(params.PYTHON_IMAGE)
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "==> Installing Python dependencies for agentit"
+        if [ -f requirements.txt ]; then
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          echo "==> Dependencies installed successfully"
+        elif [ -f pyproject.toml ]; then
+          pip install --upgrade pip
+          pip install .
+          echo "==> Package installed via pyproject.toml"
+        else
+          echo "WARNING: No requirements.txt or pyproject.toml found"
+        fi
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: agentit-python-test
+  labels:
+    app.kubernetes.io/name: agentit
+    app.kubernetes.io/part-of: agentit
+    app.kubernetes.io/managed-by: tekton
+spec:
+  params:
+    - name: SOURCE_DIR
+      type: string
+      default: /workspace/source
+      description: Path to the source directory
+    - name: PYTHON_IMAGE
+      type: string
+      default: python:3.12-slim
+      description: Python base image to use for testing
+  workspaces:
+    - name: source
+      description: Workspace containing the cloned source code
+  steps:
+    - name: run-tests
+      image: $(params.PYTHON_IMAGE)
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "==> Installing dependencies before test run"
+        pip install --upgrade pip --quiet
+        if [ -f requirements.txt ]; then
+          pip install -r requirements.txt --quiet
+        fi
+        if ! pip show pytest > /dev/null 2>&1; then
+          pip install pytest pytest-cov --quiet
+        fi
+        echo "==> Running pytest for agentit"
+        pytest --tb=short --junitxml=test-results.xml -v
+        echo "==> Tests completed successfully"
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: agentit-pipeline-run-
+  labels:
+    app.kubernetes.io/name: agentit
+    app.kubernetes.io/part-of: agentit
+    app.kubernetes.io/managed-by: tekton
+spec:
+  pipelineRef:
+    name: agentit-pipeline
+  params:
+    - name: repo-url
+      value: "https://github.com/your-org/agentit.git"
+    - name: revision
+      value: "main"
+    - name: image-ref
+      value: "registry.your-org.com/agentit/agentit:latest"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+    - name: docker-credentials
+      secret:
+        secretName: agentit-registry-credentials

@@ -1,0 +1,101 @@
+apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  name: agentit-trusted-registries
+  namespace: agentit
+  labels:
+    app.kubernetes.io/name: agentit
+    app.kubernetes.io/part-of: agentit
+    app.kubernetes.io/managed-by: kyverno
+  annotations:
+    policies.kyverno.io/title: Trusted Image Registries
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Validates that all container images for agentit originate from
+      Red Hat trusted registries. Images from Docker Hub, GitHub Container
+      Registry, or other unvetted public registries are not permitted.
+      This policy is set to Audit mode to allow gradual migration.
+      Criticality: high (score 94/100).
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: validate-registries
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - agentit
+              selector:
+                matchLabels:
+                  app.kubernetes.io/name: agentit
+      validate:
+        message: >-
+          Images for agentit must come from a trusted registry:
+          registry.access.redhat.com, registry.redhat.io, quay.io,
+          or the OpenShift internal registry
+          (image-registry.openshift-image-registry.svc). Detected an
+          image from an untrusted source. Please migrate to a supported
+          Red Hat registry.
+        pattern:
+          spec:
+            containers:
+              - image: "registry.access.redhat.com/* | registry.redhat.io/* | quay.io/* | image-registry.openshift-image-registry.svc*/*"
+    - name: validate-registries-init-containers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - agentit
+              selector:
+                matchLabels:
+                  app.kubernetes.io/name: agentit
+      preconditions:
+        any:
+          - key: "{{ request.object.spec.initContainers[] | length(@) }}"
+            operator: GreaterThanOrEquals
+            value: 1
+      validate:
+        message: >-
+          Init container images for agentit must come from a trusted registry:
+          registry.access.redhat.com, registry.redhat.io, quay.io,
+          or the OpenShift internal registry
+          (image-registry.openshift-image-registry.svc). Detected an
+          init container image from an untrusted source. Please migrate
+          to a supported Red Hat registry.
+        pattern:
+          spec:
+            initContainers:
+              - image: "registry.access.redhat.com/* | registry.redhat.io/* | quay.io/* | image-registry.openshift-image-registry.svc*/*"
+    - name: validate-registries-ephemeral-containers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - agentit
+              selector:
+                matchLabels:
+                  app.kubernetes.io/name: agentit
+      preconditions:
+        any:
+          - key: "{{ request.object.spec.ephemeralContainers[] | length(@) }}"
+            operator: GreaterThanOrEquals
+            value: 1
+      validate:
+        message: >-
+          Ephemeral container images for agentit must come from a trusted
+          registry: registry.access.redhat.com, registry.redhat.io, quay.io,
+          or the OpenShift internal registry
+          (image-registry.openshift-image-registry.svc). Detected an
+          ephemeral container image from an untrusted source.
+        pattern:
+          spec:
+            ephemeralContainers:
+              - image: "registry.access.redhat.com/* | registry.redhat.io/* | quay.io/* | image-registry.openshift-image-registry.svc*/*"
