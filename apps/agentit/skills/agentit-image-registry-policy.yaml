@@ -7,10 +7,20 @@ metadata:
     app.kubernetes.io/name: agentit
     app.kubernetes.io/part-of: agentit
     app.kubernetes.io/managed-by: kyverno
-    app.kubernetes.io/component: security
-    criticality: high
+  annotations:
+    policies.kyverno.io/title: Trusted Image Registries
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Ensures all container images for agentit are sourced exclusively from
+      Red Hat trusted registries. Images from Docker Hub, GitHub Container
+      Registry, or other unvetted public registries are flagged. This policy
+      operates in Audit mode to allow gradual migration without blocking
+      deployments. Applies to all init containers and standard containers
+      within Pods labeled for the agentit application.
 spec:
   validationFailureAction: Audit
+  background: true
   rules:
     - name: validate-registries
       match:
@@ -18,12 +28,48 @@ spec:
           - resources:
               kinds:
                 - Pod
+              namespaces:
+                - agentit
               selector:
                 matchLabels:
                   app.kubernetes.io/name: agentit
       validate:
-        message: "Images must come from a trusted registry: registry.access.redhat.com, registry.redhat.io, quay.io, or the OpenShift internal registry."
+        message: >-
+          Image '{{request.object.spec.containers[*].image}}' is not from a
+          trusted registry. Images must originate from one of the following
+          approved registries: registry.access.redhat.com,
+          registry.redhat.io, quay.io, or
+          image-registry.openshift-image-registry.svc. Docker Hub, GitHub
+          Container Registry, and other public registries are not permitted
+          due to lack of scanning, signing, and SLA guarantees.
         pattern:
           spec:
             containers:
+              - image: "registry.access.redhat.com/* | registry.redhat.io/* | quay.io/* | image-registry.openshift-image-registry.svc*/*"
+    - name: validate-init-container-registries
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - agentit
+              selector:
+                matchLabels:
+                  app.kubernetes.io/name: agentit
+      preconditions:
+        any:
+          - key: "{{ request.object.spec.initContainers[] | length(@) }}"
+            operator: GreaterThanOrEquals
+            value: 1
+      validate:
+        message: >-
+          Init container image is not from a trusted registry. Images must
+          originate from one of the following approved registries:
+          registry.access.redhat.com, registry.redhat.io, quay.io, or
+          image-registry.openshift-image-registry.svc. Docker Hub and other
+          public registries are not permitted for agentit workloads.
+        pattern:
+          spec:
+            initContainers:
               - image: "registry.access.redhat.com/* | registry.redhat.io/* | quay.io/* | image-registry.openshift-image-registry.svc*/*"

@@ -16,13 +16,16 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["pods"]
-    verbs: ["get", "list"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get"]
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
-    verbs: ["get", "list"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -79,7 +82,8 @@ spec:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
                 capabilities:
-                  drop: ["ALL"]
+                  drop:
+                    - ALL
               resources:
                 requests:
                   cpu: 200m
@@ -103,10 +107,10 @@ spec:
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp
-                - name: trivy-cache
-                  mountPath: /root/.cache/trivy
+                - name: cache
+                  mountPath: /.cache
           volumes:
             - name: tmp
               emptyDir: {}
-            - name: trivy-cache
+            - name: cache
               emptyDir: {}

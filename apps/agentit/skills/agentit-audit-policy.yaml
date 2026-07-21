@@ -62,3 +62,18 @@ data:
     This requires cluster-admin RBAC AgentIT's service account does not
     have. `audit-policy.yaml` in this ConfigMap remains useful as the
     fine-grained rule reference this profile-based approach approximates.
+
+    ## Verification
+    - `kubectl get configmap agentit-audit-policy -o jsonpath='{.data}'` — the reference policy and README are present
+    - After a cluster-admin wires the policy in (see above): the audit log file contains entries for pod create/delete operations
+    - Secret read events appear with Metadata level (no request/response body)
+    - RBAC changes are logged with full RequestResponse detail
+
+    ## Notes — agentit (python, criticality: high, score: 94/100)
+    Given the high criticality rating of this application, prompt review
+    and enforcement of this audit policy is strongly recommended. All
+    mutating operations on pods, services, secrets, deployments, and RBAC
+    resources will be captured at RequestResponse level, providing full
+    audit trails required for high-criticality workloads. Secret reads are
+    intentionally captured at Metadata level only to prevent sensitive
+    credential data from appearing in audit logs.

@@ -15,15 +15,3 @@ spec:
     - port: http
       path: /metrics
       interval: 30s
-      scheme: http
-      honorLabels: false
-      relabelings:
-        - sourceLabels:
-            - __meta_kubernetes_pod_name
-          targetLabel: pod
-        - sourceLabels:
-            - __meta_kubernetes_namespace
-          targetLabel: namespace
-  namespaceSelector:
-    matchNames:
-      - agentit

@@ -46,6 +46,11 @@ rules:
       - networkpolicies
       - ingresses
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources:
+      - roles
+      - rolebindings
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["autoscaling"]
     resources:
       - horizontalpodautoscalers
@@ -54,16 +59,11 @@ rules:
     resources:
       - poddisruptionbudgets
     verbs: ["get", "list", "watch"]
-  - apiGroups: ["rbac.authorization.k8s.io"]
-    resources:
-      - roles
-      - rolebindings
-    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: agentit-compliance-reader-binding
+  name: agentit-compliance-reader
   namespace: agentit
   labels:
     app.kubernetes.io/name: agentit
@@ -90,14 +90,13 @@ metadata:
 spec:
   schedule: "0 2 1 * *"
   timeZone: "UTC"
+  concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
-  concurrencyPolicy: Forbid
-  startingDeadlineSeconds: 3600
   jobTemplate:
     spec:
       backoffLimit: 2
-      activeDeadlineSeconds: 1800
+      activeDeadlineSeconds: 3600
       template:
         metadata:
           labels:
@@ -144,3 +143,4 @@ spec:
               emptyDir: {}
             - name: tmp
               emptyDir: {}
+          automountServiceAccountToken: true

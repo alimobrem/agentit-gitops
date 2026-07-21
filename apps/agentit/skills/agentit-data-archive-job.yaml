@@ -22,8 +22,6 @@ spec:
       restartPolicy: OnFailure
       securityContext:
         runAsNonRoot: true
-        runAsUser: 26
-        fsGroup: 26
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -31,10 +29,11 @@ spec:
           image: registry.access.redhat.com/rhel9/postgresql-15:latest
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
             capabilities:
               drop:
                 - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
           env:
             - name: PGHOST
               valueFrom:
@@ -73,8 +72,8 @@ spec:
 
               echo "=== Data Archive for agentit ==="
               echo "Started: $(date -u)"
-              echo "Criticality: high (score: 96/100)"
               echo "Stack: python"
+              echo "Criticality: high"
 
               if command -v pg_dump &>/dev/null && [ -n "${PGHOST:-}" ]; then
                 echo "PostgreSQL detected — running pg_dump"
@@ -92,15 +91,14 @@ spec:
                 echo "Schema compressed: $ARCHIVE_DIR/agentit-schema-${TIMESTAMP}.sql.gz"
               else
                 echo "No PostgreSQL detected — running generic export"
-                echo "Archiving PVC data"
+                echo "Archiving PVC data from /data"
                 tar czf "$ARCHIVE_DIR/agentit-data-${TIMESTAMP}.tar.gz" \
-                  /data/ 2>/dev/null || echo "No /data directory found"
+                  /data/ 2>/dev/null || echo "No /data directory found, skipping generic export"
               fi
 
               echo "=== Archive manifest ==="
               ls -lah "$ARCHIVE_DIR/"
-              echo "=== Disk usage ==="
-              du -sh "$ARCHIVE_DIR/"
+              echo "Total archive size: $(du -sh "$ARCHIVE_DIR/" | cut -f1)"
               echo "Completed: $(date -u)"
           volumeMounts:
             - name: archive-storage

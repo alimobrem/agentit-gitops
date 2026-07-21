@@ -44,9 +44,6 @@ spec:
         kind: Task
       runAfter:
         - git-clone
-      params:
-        - name: SOURCE_DIR
-          value: $(workspaces.source.path)
       workspaces:
         - name: source
           workspace: shared-workspace
@@ -56,9 +53,6 @@ spec:
         kind: Task
       runAfter:
         - build
-      params:
-        - name: SOURCE_DIR
-          value: $(workspaces.source.path)
       workspaces:
         - name: source
           workspace: shared-workspace
@@ -75,10 +69,10 @@ spec:
           value: ./Containerfile
         - name: CONTEXT
           value: .
+        - name: TLSVERIFY
+          value: "true"
         - name: FORMAT
           value: oci
-        - name: SKIP_PUSH
-          value: "true"
       workspaces:
         - name: source
           workspace: shared-workspace
@@ -91,14 +85,8 @@ spec:
       params:
         - name: IMAGE
           value: $(params.image-ref)
-        - name: DOCKERFILE
-          value: ./Containerfile
-        - name: CONTEXT
-          value: .
-        - name: FORMAT
-          value: oci
-        - name: SKIP_PUSH
-          value: "false"
+        - name: TLSVERIFY
+          value: "true"
       workspaces:
         - name: source
           workspace: shared-workspace
@@ -142,34 +130,24 @@ metadata:
     app.kubernetes.io/part-of: agentit
     app.kubernetes.io/managed-by: tekton
 spec:
-  params:
-    - name: SOURCE_DIR
-      type: string
-      default: /workspace/source
-      description: Path to the source directory inside the workspace
-    - name: PYTHON_IMAGE
-      type: string
-      default: python:3.12-slim
-      description: Python base image to use for the build step
   workspaces:
     - name: source
-      description: Workspace containing the cloned source code
+      description: Workspace containing cloned source code
   steps:
-    - name: install-dependencies
-      image: $(params.PYTHON_IMAGE)
+    - name: pip-install
+      image: python:3.12-slim
       workingDir: $(workspaces.source.path)
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
         echo "==> Installing Python dependencies for agentit"
+        pip install --upgrade pip
         if [ -f requirements.txt ]; then
-          pip install --upgrade pip
           pip install -r requirements.txt
         elif [ -f pyproject.toml ]; then
-          pip install --upgrade pip
           pip install .
         else
-          echo "WARNING: No requirements.txt or pyproject.toml found"
+          echo "No requirements.txt or pyproject.toml found — skipping install"
         fi
         echo "==> Dependency installation complete"
 ---
@@ -182,42 +160,26 @@ metadata:
     app.kubernetes.io/part-of: agentit
     app.kubernetes.io/managed-by: tekton
 spec:
-  params:
-    - name: SOURCE_DIR
-      type: string
-      default: /workspace/source
-      description: Path to the source directory inside the workspace
-    - name: PYTHON_IMAGE
-      type: string
-      default: python:3.12-slim
-      description: Python base image to use for the test step
-    - name: PYTEST_ARGS
-      type: string
-      default: "--tb=short -v"
-      description: Additional arguments to pass to pytest
   workspaces:
     - name: source
-      description: Workspace containing the cloned source code
+      description: Workspace containing cloned source code with installed dependencies
   steps:
-    - name: run-tests
-      image: $(params.PYTHON_IMAGE)
+    - name: pytest
+      image: python:3.12-slim
       workingDir: $(workspaces.source.path)
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
-        echo "==> Installing dependencies before test run for agentit"
+        echo "==> Running pytest for agentit"
         pip install --upgrade pip --quiet
         if [ -f requirements.txt ]; then
           pip install -r requirements.txt --quiet
         elif [ -f pyproject.toml ]; then
           pip install . --quiet
         fi
-        if ! pip show pytest > /dev/null 2>&1; then
-          pip install pytest pytest-cov --quiet
-        fi
-        echo "==> Running pytest for agentit"
-        pytest $(params.PYTEST_ARGS) --junitxml=test-results/results.xml
-        echo "==> Tests completed successfully"
+        pip install pytest pytest-cov --quiet
+        pytest --tb=short --junitxml=test-results.xml -v
+        echo "==> Tests complete"
 ---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
