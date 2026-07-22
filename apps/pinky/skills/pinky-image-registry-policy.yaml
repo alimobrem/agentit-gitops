@@ -5,6 +5,8 @@ metadata:
   namespace: pinky
   labels:
     app.kubernetes.io/name: pinky
+    app.kubernetes.io/part-of: pinky
+    app.kubernetes.io/managed-by: kyverno
 spec:
   validationFailureAction: Audit
   rules:
@@ -22,4 +24,4 @@ spec:
         pattern:
           spec:
             containers:
-              - image: "registry.access.redhat.com/*/*| registry.redhat.io/*/*| quay.io/*/*| image-registry.openshift-image-registry.svc*/*"
+              - image: "registry.access.redhat.com/* | registry.redhat.io/* | quay.io/* | image-registry.openshift-image-registry.svc*/*"

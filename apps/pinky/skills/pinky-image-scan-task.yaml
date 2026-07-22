@@ -5,8 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: pinky
     app.kubernetes.io/part-of: pinky
-    app.kubernetes.io/component: security
-    app.kubernetes.io/managed-by: openshift-pipelines
+    app.kubernetes.io/managed-by: tekton
 spec:
   params:
     - name: IMAGE
@@ -54,3 +53,8 @@ spec:
     - name: gate
       image: aquasec/trivy:latest
       script: |
+        #!/usr/bin/env sh
+        trivy image \
+          --severity CRITICAL \
+          --exit-code 1 \
+          $(params.IMAGE)
