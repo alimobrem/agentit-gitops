@@ -1,13 +1,13 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: pinky
+  name: pinky-hpa
   labels:
     app.kubernetes.io/name: pinky
 spec:
   scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
     name: pinky
   minReplicas: 2
   maxReplicas: 10
