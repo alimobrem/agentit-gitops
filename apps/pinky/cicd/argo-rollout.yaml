@@ -4,6 +4,8 @@ metadata:
   name: pinky
   labels:
     app.kubernetes.io/name: pinky
+  annotations:
+    agentit.io/image-note: "ImageStream agentit/pinky:latest = ubi9/httpd-24 for dogfood Rollout"
 spec:
   replicas: 2
   selector:
@@ -12,15 +14,6 @@ spec:
   strategy:
     canary:
       steps:
-      - setWeight: 5
-      - pause:
-          duration: 60s
-      - setWeight: 25
-      - pause:
-          duration: 60s
-      - setWeight: 50
-      - pause:
-          duration: 60s
       - setWeight: 100
       canaryService: pinky-canary
       stableService: pinky
@@ -47,7 +40,7 @@ spec:
             memory: 512Mi
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: false
           capabilities:
             drop:
             - ALL
