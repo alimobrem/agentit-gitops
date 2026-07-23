@@ -29,3 +29,7 @@ Postgres client/server images under `apps/pinky` must use `registry.redhat.io/..
 (not `registry.access.redhat.com/rhel9/postgresql-*`), matching the live
 `pinky-postgresql` / `pinky-temporal-db` images — the access.redhat.com repos
 require terms acceptance and ImagePullBackOff on dogfood.
+
+`Job/pinky-data-archive` is a dogfood smoke Job (no-op); do not bind
+`pinky-db-credentials` keys that are not present on cluster (`host` /
+`database` / `username` are absent — only `password` / `url` / `url-plain`).
