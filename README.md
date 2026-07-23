@@ -20,3 +20,5 @@ Cross-namespace pulls require `system:image-puller` for pinky service accounts i
 
 The real pinky product workloads (`pinky-api` / `pinky-web` / `pinky-worker` on
 `quay.io/amobrem/...`) are deployed separately from this GitOps path.
+
+ResourceQuota must leave headroom for the pre-existing pinky product Deployments plus the dogfood `Rollout/pinky`.
