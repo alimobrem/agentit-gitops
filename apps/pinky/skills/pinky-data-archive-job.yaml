@@ -36,35 +36,13 @@ spec:
                 - ALL
             readOnlyRootFilesystem: false
             runAsNonRoot: true
-          env:
-            - name: PGHOST
-              valueFrom:
-                secretKeyRef:
-                  name: pinky-db-credentials
-                  key: host
-            - name: PGPORT
-              valueFrom:
-                secretKeyRef:
-                  name: pinky-db-credentials
-                  key: port
-                  optional: true
-            - name: PGDATABASE
-              valueFrom:
-                secretKeyRef:
-                  name: pinky-db-credentials
-                  key: database
-            - name: PGUSER
-              valueFrom:
-                secretKeyRef:
-                  name: pinky-db-credentials
-                  key: username
-            - name: PGPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: pinky-db-credentials
-                  key: password
+          # No secret env: pinky-db-credentials only has password/url keys, and
+          # this dogfood Job is a no-op smoke (command below). Missing host/
+          # database/username keys caused CreateContainerConfigError after the
+          # image pull was fixed.
           command:
             - /bin/bash
             - -c
             - |
-              set
+              set -euo pipefail
+              echo "pinky-data-archive: image pull ok; no-op complete"
