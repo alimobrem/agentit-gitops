@@ -63,6 +63,13 @@ rules:
       - get
       - list
       - watch
+  - apiGroups: ["argoproj.io"]
+    resources:
+      - rollouts
+    verbs:
+      - get
+      - list
+      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -78,4 +85,50 @@ subjects:
     namespace: pinky
 roleRef:
   kind: Role
-  name: pinky-compliance-
+  name: pinky-compliance-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# Uses the AgentIT image already running on this cluster (tip tag).
+# Requires pinky SAs to pull from the agentit namespace ImageStream.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pinky-compliance-reassess
+  namespace: pinky
+  labels:
+    app.kubernetes.io/name: pinky
+    app.kubernetes.io/component: compliance-rescan
+spec:
+  schedule: "0 3 1 * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 3600
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: pinky-compliance-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: job
+              image: image-registry.openshift-image-registry.svc:5000/agentit/agentit:81316a95df7f9b6df54cd74f2fcf6cb4fbe3f84f
+              imagePullPolicy: IfNotPresent
+              command: ["agentit", "assess", "--rescan"]
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
