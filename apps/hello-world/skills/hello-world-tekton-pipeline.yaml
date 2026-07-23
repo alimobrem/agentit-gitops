@@ -1,0 +1,208 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: hello-world-pipeline
+  labels:
+    app.kubernetes.io/name: hello-world
+spec:
+  params:
+    - name: repo-url
+      type: string
+      description: Source repository URL
+    - name: revision
+      type: string
+      description: Git revision to clone
+      default: main
+    - name: image-ref
+      type: string
+      description: Target container image reference
+  workspaces:
+    - name: shared-workspace
+      description: Shared workspace for source and build artifacts
+    - name: docker-credentials
+      description: Credentials for pushing to the container registry
+  tasks:
+    - name: git-clone
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: namespace
+            value: openshift-pipelines
+      params:
+        - name: URL
+          value: $(params.repo-url)
+        - name: REVISION
+          value: $(params.revision)
+        - name: DELETE_EXISTING
+          value: "true"
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+    - name: build
+      runAfter:
+        - git-clone
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: build
+            image: docker.io/library/alpine:3.19
+            workingDir: $(workspaces.source.path)
+            script: |
+              #!/bin/sh
+              set -e
+              echo "Stack is unknown — running generic build step for hello-world"
+              echo "Detected files:"
+              ls -la
+              if [ -f "go.mod" ]; then
+                echo "Detected Go project"
+                apk add --no-cache go
+                go build -o app .
+              elif [ -f "package.json" ]; then
+                echo "Detected Node.js project"
+                apk add --no-cache nodejs npm
+                npm ci
+              elif [ -f "requirements.txt" ]; then
+                echo "Detected Python project"
+                apk add --no-cache python3 py3-pip
+                pip install -r requirements.txt
+              elif [ -f "pom.xml" ]; then
+                echo "Detected Java/Maven project"
+                apk add --no-cache openjdk17 maven
+                mvn package -DskipTests=false
+              else
+                echo "No recognized build file found — skipping language-specific build"
+              fi
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: test
+      runAfter:
+        - build
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: test
+            image: docker.io/library/alpine:3.19
+            workingDir: $(workspaces.source.path)
+            script: |
+              #!/bin/sh
+              set -e
+              echo "Running tests for hello-world"
+              if [ -f "go.mod" ]; then
+                echo "Running Go tests"
+                apk add --no-cache go
+                go test ./...
+              elif [ -f "package.json" ]; then
+                echo "Running Node.js tests"
+                apk add --no-cache nodejs npm
+                npm test
+              elif [ -f "requirements.txt" ]; then
+                echo "Running Python tests"
+                apk add --no-cache python3 py3-pip pytest
+                pip install -r requirements.txt
+                pytest
+              elif [ -f "pom.xml" ]; then
+                echo "Running Maven tests"
+                apk add --no-cache openjdk17 maven
+                mvn test
+              else
+                echo "No recognized test framework found — skipping tests"
+              fi
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: image-build
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: buildah
+          - name: namespace
+            value: openshift-pipelines
+      runAfter:
+        - test
+      params:
+        - name: IMAGE
+          value: $(params.image-ref)
+        - name: TLSVERIFY
+          value: "true"
+        - name: FORMAT
+          value: oci
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: dockerconfig
+          workspace: docker-credentials
+    - name: image-scan
+      taskRef:
+        name: image-scan
+        kind: Task
+      runAfter:
+        - image-build
+      params:
+        - name: IMAGE
+          value: $(params.image-ref)
+    - name: sbom-generate
+      taskRef:
+        name: hello-world-sbom
+        kind: Task
+      runAfter:
+        - image-build
+      params:
+        - name: IMAGE
+          value: $(params.image-ref)
+    - name: deploy
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: openshift-client
+          - name: namespace
+            value: openshift-pipelines
+      runAfter:
+        - image-scan
+        - sbom-generate
+      params:
+        - name: SCRIPT
+          value: |
+            kubectl rollout restart deployment/hello-world
+            kubectl rollout status deployment/hello-world --timeout=120s
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: hello-world-pipeline-run-
+  labels:
+    app.kubernetes.io/name: hello-world
+spec:
+  pipelineRef:
+    name: hello-world-pipeline
+  params:
+    - name: repo-url
+      value: "https://github.com/your-org/hello-world.git"
+    - name: revision
+      value: "main"
+    - name: image-ref
+      value: "image-registry.openshift-image-registry.svc:5000/hello-world/hello-world:latest"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    - name: docker-credentials
+      secret:
+        secretName: hello-world-registry-credentials

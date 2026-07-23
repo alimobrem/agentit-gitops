@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-world-grafana-dashboard
+  labels:
+    app.kubernetes.io/name: hello-world
+    grafana_dashboard: "1"
+data:
+  hello-world-dashboard.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "title": "Request Rate",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{app=\"hello-world\"}[5m]))",
+              "legendFormat": "req/s",
+              "datasource": { "uid": "prometheus" }
+            }
+          ]
+        },
+        {
+          "title": "Error Rate",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{app=\"hello-world\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{app=\"hello-world\"}[5m]))",
+              "legendFormat": "error %",
+              "datasource": { "uid": "prometheus" }
+            }
+          ]
+        },
+        {
+          "title": "P99 Latency",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"hello-world\"}[5m])) by (le))",
+              "legendFormat": "p99 (s)",
+              "datasource": { "uid": "prometheus" }
+            }
+          ]
+        },
+        {
+          "title": "Pod Restarts",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "expr": "increase(kube_pod_container_status_restarts_total{pod=~\"hello-world.*\"}[1h])",
+              "legendFormat": "restarts",
+              "datasource": { "uid": "prometheus" }
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["hello-world", "red-metrics"],
+      "templating": { "list": [] },
+      "time": { "from": "now-1h", "to": "now" },
+      "title": "hello-world RED Metrics",
+      "uid": "hello-world-red"
+    }

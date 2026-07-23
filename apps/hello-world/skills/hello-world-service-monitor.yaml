@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hello-world-monitor
+  labels:
+    app.kubernetes.io/name: hello-world
+spec:
+  selector:
+    matchLabels:
+      app: hello-world
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

@@ -1,0 +1,55 @@
+apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  name: hello-world-health-probes
+  namespace: hello-world
+  labels:
+    app.kubernetes.io/name: hello-world
+spec:
+  rules:
+    - name: add-missing-health-probes
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+              namespaces:
+                - hello-world
+      mutate:
+        foreach:
+          - list: "request.object.spec.template.spec.containers"
+            preconditions:
+              all:
+                - key: "{{ element.livenessProbe || '' }}"
+                  operator: Equals
+                  value: ""
+                - key: "{{ element.ports[0].containerPort || '' }}"
+                  operator: NotEquals
+                  value: ""
+            patchesJson6902: |-
+              - path: "/spec/template/spec/containers/{{ elementIndex }}/livenessProbe"
+                op: add
+                value:
+                  tcpSocket:
+                    port: "{{ element.ports[0].containerPort }}"
+                  initialDelaySeconds: 30
+                  periodSeconds: 20
+                  failureThreshold: 5
+          - list: "request.object.spec.template.spec.containers"
+            preconditions:
+              all:
+                - key: "{{ element.readinessProbe || '' }}"
+                  operator: Equals
+                  value: ""
+                - key: "{{ element.ports[0].containerPort || '' }}"
+                  operator: NotEquals
+                  value: ""
+            patchesJson6902: |-
+              - path: "/spec/template/spec/containers/{{ elementIndex }}/readinessProbe"
+                op: add
+                value:
+                  tcpSocket:
+                    port: "{{ element.ports[0].containerPort }}"
+                  initialDelaySeconds: 15
+                  periodSeconds: 10
+                  failureThreshold: 3
