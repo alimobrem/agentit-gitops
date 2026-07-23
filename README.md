@@ -24,3 +24,8 @@ The real pinky product workloads (`pinky-api` / `pinky-web` / `pinky-worker` on
 ResourceQuota must leave headroom for the pre-existing pinky product Deployments plus the dogfood `Rollout/pinky`.
 
 Broken/incomplete Tekton Pipeline/Task YAML is not kept under `apps/pinky` (Tekton v1 webhook rejects it and blocks Argo sync).
+
+Postgres client/server images under `apps/pinky` must use `registry.redhat.io/...`
+(not `registry.access.redhat.com/rhel9/postgresql-*`), matching the live
+`pinky-postgresql` / `pinky-temporal-db` images — the access.redhat.com repos
+require terms acceptance and ImagePullBackOff on dogfood.

@@ -26,7 +26,9 @@ spec:
           type: RuntimeDefault
       containers:
         - name: archive
-          image: registry.access.redhat.com/rhel9/postgresql-15:latest
+          # Match pinky-postgresql / temporal-db (registry.access.redhat.com
+          # rhel9/postgresql-* requires terms acceptance → ImagePullBackOff).
+          image: registry.redhat.io/rhel9/postgresql-16:latest
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
