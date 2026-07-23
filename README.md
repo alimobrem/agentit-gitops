@@ -22,3 +22,5 @@ The real pinky product workloads (`pinky-api` / `pinky-web` / `pinky-worker` on
 `quay.io/amobrem/...`) are deployed separately from this GitOps path.
 
 ResourceQuota must leave headroom for the pre-existing pinky product Deployments plus the dogfood `Rollout/pinky`.
+
+Broken/incomplete Tekton Pipeline/Task YAML is not kept under `apps/pinky` (Tekton v1 webhook rejects it and blocks Argo sync).
